@@ -30,11 +30,11 @@
 需要安装 .NET Framework 4.8 Developer Pack 或 Visual Studio 2022。
 
 ```powershell
-& "D:\devsoft\vs2022\MSBuild\Current\Bin\MSBuild.exe" .\src\Cs2ShaderCacheCleaner\Cs2ShaderCacheCleaner.csproj /p:Configuration=Release
+& "D:\devsoft\vs2022\MSBuild\Current\Bin\MSBuild.exe" .\Cs2ShaderCacheCleaner\Cs2ShaderCacheCleaner.csproj /p:Configuration=Release
 ```
 
 输出文件位于：
 
 ```text
-src\Cs2ShaderCacheCleaner\bin\Release\Cs2ShaderCacheCleaner.exe
+Cs2ShaderCacheCleaner\bin\Release\Cs2ShaderCacheCleaner.exe
 ```
