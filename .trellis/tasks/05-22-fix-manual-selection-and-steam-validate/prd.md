@@ -15,7 +15,7 @@
 ## Assumptions (temporary)
 
 * 手动验证按钮应直接复用现有 Steam URI，不需要重新实现 Steam 客户端定位。
-* 清理仍只执行 `ItemCount > 0` 的项目，空项目即使被勾选也不清理。
+* 清理按界面当前勾选状态执行，具体清理逻辑负责处理空目录或未发现文件的提示。
 * 本次不改变缓存扫描范围和删除策略。
 
 ## Open Questions
@@ -26,16 +26,27 @@
 
 * 清理按钮必须读取用户当前实际勾选状态，包含扫描后手动勾选的项目；不能再用 `ItemCount > 0` 过滤掉用户手动选择的项目。
 * 清理后仍重新扫描并刷新列表。
-* 新增“验证完整性”按钮，点击后请求 Steam 验证 CS2 app 730，并把结果写入日志。
+* 新增“验证CS2游戏完整性”按钮，点击后请求 Steam 验证 CS2 app 730，并把结果写入日志。
+* VPK 清理时单个文件删除失败不能阻断后续 VPK 删除；只要执行了 VPK 清理项，就必须自动请求 Steam 验证 CS2 游戏完整性，即使未发现匹配文件。
 * Steam 协议请求无法确认登录态和验证进度，日志必须提示用户确认 Steam 已登录；如果未登录或未开始验证，需要手动执行验证游戏完整性。
+* Windows DirectX/D3D 着色器缓存清理不能再调用 `cleanmgr.exe`，避免 Windows 磁盘清理连带清理 Internet 临时文件等其它项目。
+* Windows DirectX/D3D 着色器缓存清理只允许直接处理明确的用户级 Shader Cache 目录；找不到匹配目录时跳过并记录日志。
+* Windows DirectX/D3D 着色器缓存清理目标必须按当前用户 `%LOCALAPPDATA%` 的实际位置生成，不能误导用户认为缓存一定跟随 CS2 安装盘。
+* Windows DirectX/D3D 着色器缓存路径列必须展示具体候选/已存在目录，例如 `%LOCALAPPDATA%\D3DSCache`，而不是只展示 `%LOCALAPPDATA%` 根目录。
 * 忙碌状态下禁用扫描、清理和验证按钮，避免重复操作。
 
 ## Acceptance Criteria (evolving)
 
 * [x] 扫描后手动勾选一个未默认勾选但路径有效的清理项，再点击“清理所选”，确认框和清理流程都包含该项。
 * [x] 手动取消勾选的项目不会被清理。
-* [x] 点击“验证完整性”会调用现有 Steam 验证逻辑，并在日志显示成功或失败信息。
+* [x] 点击“验证CS2游戏完整性”会调用现有 Steam 验证逻辑，并在日志显示成功或失败信息。
+* [x] 按钮文字显示为“验证CS2游戏完整性”。
+* [x] VPK 清理项执行后会自动请求 Steam 验证，即使删除数量为 0 或未发现匹配文件。
 * [x] Steam 未登录或未开始验证时，日志文案会提示本次未能执行验证游戏完整性，需要登录 Steam 后手动执行。
+* [x] Windows DirectX/D3D 着色器缓存清理不再调用 `cleanmgr.exe`，不会触发系统磁盘清理的其它项目。
+* [x] Windows DirectX/D3D 着色器缓存清理只会处理当前用户目录下明确的 Shader Cache 目录。
+* [x] Windows DirectX/D3D 着色器缓存列表项按当前用户 `%LOCALAPPDATA%` 实际路径展示，不再按 CS2 所在盘和 C 盘拆分。
+* [x] Windows DirectX/D3D 着色器缓存路径列展示具体目录，方便用户确认会清理哪里。
 * [x] 项目可以成功编译。
 
 ## Definition of Done (team quality bar)
@@ -53,7 +64,7 @@
 
 ## Technical Notes
 
-* 影响文件：`Cs2ShaderCacheCleaner/MainForm.cs`、`Cs2ShaderCacheCleaner/CacheCleaner.cs`、`README.md`、`Cs2ShaderCacheCleaner/README.md`。
+* 影响文件：`Cs2ShaderCacheCleaner/MainForm.cs`、`Cs2ShaderCacheCleaner/CacheCleaner.cs`、`Cs2ShaderCacheCleaner/WindowsDiskCleanup.cs`、`README.md`、`Cs2ShaderCacheCleaner/README.md`。
 * 复用文件：`Cs2ShaderCacheCleaner/SteamGameVerifier.cs`。
 * 当前项目没有单独测试工程。
 * 验证命令：`D:/devsoft/vs2022/MSBuild/Current/Bin/MSBuild.exe .\Cs2ShaderCacheCleaner\Cs2ShaderCacheCleaner.csproj /p:Configuration=Release`，结果 0 警告 0 错误。

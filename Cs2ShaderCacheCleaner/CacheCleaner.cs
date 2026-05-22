@@ -88,7 +88,6 @@ namespace Cs2ShaderCacheCleaner
                     RequiresSteamValidation = true
                 });
 
-                AddWindowsDirectXShaderCacheTarget(targets, "CS2 所在盘", cs2Path);
             }
             else
             {
@@ -101,17 +100,9 @@ namespace Cs2ShaderCacheCleaner
                     RequiresSteamValidation = true,
                     Status = "未找到 CS2 安装目录"
                 });
-
-                targets.Add(new CacheTarget
-                {
-                    Name = "Windows DirectX 着色器缓存（CS2 所在盘）",
-                    Path = "",
-                    Kind = CacheTargetKind.WindowsDirectXShaderCache,
-                    Status = "未找到 CS2 所在盘符"
-                });
             }
 
-            AddWindowsDirectXShaderCacheTarget(targets, "C: 系统盘", "C:");
+            AddWindowsDirectXShaderCacheTarget(targets);
 
             foreach (var target in targets)
             {
@@ -121,26 +112,25 @@ namespace Cs2ShaderCacheCleaner
             return targets;
         }
 
-        private static void AddWindowsDirectXShaderCacheTarget(ICollection<CacheTarget> targets, string label, string drivePath)
+        private static void AddWindowsDirectXShaderCacheTarget(ICollection<CacheTarget> targets)
         {
-            var driveLetter = WindowsDiskCleanup.GetDriveLetter(drivePath);
-            if (string.IsNullOrWhiteSpace(driveLetter))
+            var candidatePaths = WindowsDiskCleanup.GetDirectXShaderCacheCandidatePaths();
+            if (candidatePaths.Count == 0)
             {
-                return;
-            }
-
-            var drive = driveLetter + ":";
-            if (targets.Any(target =>
-                target.Kind == CacheTargetKind.WindowsDirectXShaderCache
-                && string.Equals(target.Path, drive, StringComparison.OrdinalIgnoreCase)))
-            {
+                targets.Add(new CacheTarget
+                {
+                    Name = "Windows DirectX/D3D 着色器缓存（当前用户）",
+                    Path = "",
+                    Kind = CacheTargetKind.WindowsDirectXShaderCache,
+                    Status = "未找到当前用户 LocalAppData 目录"
+                });
                 return;
             }
 
             targets.Add(new CacheTarget
             {
-                Name = "Windows DirectX 着色器缓存（" + label + "）",
-                Path = drive,
+                Name = "Windows DirectX/D3D 着色器缓存（当前用户）",
+                Path = string.Join("；", candidatePaths),
                 Kind = CacheTargetKind.WindowsDirectXShaderCache
             });
         }
@@ -197,10 +187,14 @@ namespace Cs2ShaderCacheCleaner
             {
                 if (target.Kind == CacheTargetKind.WindowsDirectXShaderCache)
                 {
-                    target.Exists = !string.IsNullOrWhiteSpace(target.Path);
-                    target.ItemCount = target.Exists ? 1 : 0;
-                    target.SizeBytes = 0;
-                    target.Status = target.Exists ? "可清理（由 Windows 磁盘清理处理）" : target.Status;
+                    var existingPaths = WindowsDiskCleanup.GetExistingDirectXShaderCachePaths().ToList();
+                    target.Exists = existingPaths.Count > 0;
+                    target.ItemCount = existingPaths.Count;
+                    target.SizeBytes = existingPaths.Sum(GetDirectorySize);
+                    target.Path = existingPaths.Count > 0
+                        ? string.Join("；", existingPaths)
+                        : target.Path;
+                    target.Status = existingPaths.Count > 0 ? "可清理（当前用户）" : "未发现缓存目录";
                     return;
                 }
 
@@ -335,31 +329,67 @@ namespace Cs2ShaderCacheCleaner
             }
 
             var deleted = 0;
+            var failed = 0;
+            var failureMessages = new List<string>();
             foreach (var file in GetPatternFiles(target))
             {
-                DeleteFile(file);
-                deleted++;
+                try
+                {
+                    DeleteFile(file);
+                    deleted++;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    AddFailureMessage(failureMessages, file, ex);
+                }
             }
 
             return new CleanResult
             {
                 Name = target.Name,
-                Success = true,
+                Success = deleted > 0 || failed == 0,
                 DeletedCount = deleted,
-                RequiresSteamValidation = target.RequiresSteamValidation && deleted > 0,
-                Message = deleted > 0 ? "已删除匹配的 VPK 着色器缓存文件。" : "未发现匹配文件。"
+                RequiresSteamValidation = target.RequiresSteamValidation,
+                Message = BuildFilePatternCleanMessage(deleted, failed, failureMessages)
             };
+        }
+
+        private static string BuildFilePatternCleanMessage(int deleted, int failed, IEnumerable<string> failureMessages)
+        {
+            if (deleted == 0 && failed == 0)
+            {
+                return "未发现匹配文件。";
+            }
+
+            var message = deleted > 0
+                ? "已删除匹配的 VPK 着色器缓存文件。"
+                : "未删除任何匹配的 VPK 着色器缓存文件。";
+
+            if (failed == 0)
+            {
+                return message;
+            }
+
+            message += " 跳过 " + failed + " 项被占用或无法访问的项目。";
+            var details = failureMessages.ToList();
+            if (details.Count > 0)
+            {
+                message += " 示例：" + string.Join("；", details);
+            }
+
+            return message;
         }
 
         private static CleanResult CleanWindowsDirectXShaderCache(CacheTarget target)
         {
             string message;
-            var result = WindowsDiskCleanup.TryCleanDirectXShaderCacheOnDrive(target.Path, out message);
+            var result = WindowsDiskCleanup.TryCleanCurrentUserDirectXShaderCache(out message);
             return new CleanResult
             {
                 Name = target.Name,
                 Success = result != WindowsDiskCleanupResult.Failed,
-                DeletedCount = result == WindowsDiskCleanupResult.AutomaticStarted ? 1 : 0,
+                DeletedCount = result == WindowsDiskCleanupResult.Cleaned ? 1 : 0,
                 Message = message
             };
         }

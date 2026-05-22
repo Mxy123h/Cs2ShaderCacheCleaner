@@ -79,9 +79,9 @@ namespace Cs2ShaderCacheCleaner
             validateButton = new Button
             {
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-                Location = new Point(592, 446),
-                Size = new Size(116, 34),
-                Text = "验证完整性"
+                Location = new Point(548, 446),
+                Size = new Size(160, 34),
+                Text = "验证CS2游戏完整性"
             };
             validateButton.Click += (sender, args) => RequestCs2Validation();
 
@@ -199,8 +199,9 @@ namespace Cs2ShaderCacheCleaner
                         string.IsNullOrWhiteSpace(result.Message) ? "" : "，" + result.Message));
                 }
 
-                if (results.Any(result => result.Success && result.RequiresSteamValidation))
+                if (results.Any(result => result.RequiresSteamValidation))
                 {
+                    AppendLog("已执行 CS2 着色器 VPK 清理项，正在请求 Steam 验证 CS2 游戏完整性...");
                     RequestCs2Validation();
                 }
 

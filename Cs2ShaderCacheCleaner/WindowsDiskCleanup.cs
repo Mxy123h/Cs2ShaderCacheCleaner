@@ -1,117 +1,199 @@
-using Microsoft.Win32;
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
-using System.Security;
+using System.Linq;
 
 namespace Cs2ShaderCacheCleaner
 {
     internal enum WindowsDiskCleanupResult
     {
-        AutomaticStarted,
-        ManualStarted,
+        Cleaned,
+        Skipped,
         Failed
     }
 
     internal static class WindowsDiskCleanup
     {
-        private const string CleanupProfileId = "0730";
-        private const string VolumeCachesRegistryPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches";
-        private const string StateFlagName = "StateFlags" + CleanupProfileId;
-        private static readonly string[] ShaderCacheRegistryNames =
+        public static string GetDirectXShaderCacheRootPath()
         {
-            "D3D Shader Cache",
-            "DirectX Shader Cache"
-        };
+            return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        }
+
+        public static List<string> GetDirectXShaderCacheCandidatePaths()
+        {
+            var localAppData = GetDirectXShaderCacheRootPath();
+            if (string.IsNullOrWhiteSpace(localAppData))
+            {
+                return new List<string>();
+            }
+
+            return new List<string>
+            {
+                Path.Combine(localAppData, "D3DSCache"),
+                Path.Combine(localAppData, "Microsoft", "DirectX Shader Cache")
+            };
+        }
+
+        public static List<string> GetExistingDirectXShaderCachePaths()
+        {
+            return GetDirectXShaderCacheCandidatePaths()
+                .Where(Directory.Exists)
+                .ToList();
+        }
 
         public static bool TryCleanDirectXShaderCache(string cs2Path, out string message)
         {
-            var driveLetter = GetDriveLetter(cs2Path);
-            if (string.IsNullOrWhiteSpace(driveLetter))
-            {
-                message = "未能定位 CS2 所在盘符，已跳过 Windows DirectX 着色器缓存清理。";
-                return false;
-            }
-
-            return TryCleanDirectXShaderCacheOnDrive(driveLetter + ":", out message) == WindowsDiskCleanupResult.AutomaticStarted;
+            return TryCleanCurrentUserDirectXShaderCache(out message) == WindowsDiskCleanupResult.Cleaned;
         }
 
         public static WindowsDiskCleanupResult TryCleanDirectXShaderCacheOnDrive(string drivePath, out string message)
         {
-            var driveLetter = GetDriveLetter(drivePath);
+            return TryCleanCurrentUserDirectXShaderCache(out message);
+        }
+
+        public static WindowsDiskCleanupResult TryCleanCurrentUserDirectXShaderCache(out string message)
+        {
+            var driveLetter = GetDriveLetter(GetDirectXShaderCacheRootPath());
+
             if (string.IsNullOrWhiteSpace(driveLetter))
             {
-                message = "未能定位 CS2 所在盘符，已跳过 Windows DirectX 着色器缓存清理。";
+                message = "未能定位当前用户 LocalAppData 盘符，已跳过 Windows DirectX/D3D 着色器缓存清理。";
                 return WindowsDiskCleanupResult.Failed;
             }
 
             try
             {
-                ConfigureDirectXShaderCacheCleanup();
-                StartCleanManager("/d " + driveLetter + ": /sagerun:" + CleanupProfileId);
-                message = "已请求 Windows 磁盘清理清理 " + driveLetter + ": 盘的 DirectX/D3D 着色器缓存。";
-                return WindowsDiskCleanupResult.AutomaticStarted;
-            }
-            catch (Exception ex) when (IsRegistryPermissionException(ex))
-            {
-                return TryOpenManualDiskCleanup(driveLetter, "当前权限无法自动配置 DirectX 着色器缓存清理项", out message);
+                var cacheDirectories = GetDirectXShaderCacheDirectories(driveLetter).ToList();
+                if (cacheDirectories.Count == 0)
+                {
+                    message = driveLetter + ": 盘未发现可直接清理的 Windows DirectX/D3D 着色器缓存目录，已跳过。";
+                    return WindowsDiskCleanupResult.Skipped;
+                }
+
+                var deleted = 0;
+                var failed = 0;
+                var failureMessages = new List<string>();
+                foreach (var cacheDirectory in cacheDirectories)
+                {
+                    CleanDirectoryContents(cacheDirectory, ref deleted, ref failed, failureMessages);
+                }
+
+                message = BuildCleanMessage(driveLetter, cacheDirectories.Count, deleted, failed, failureMessages);
+                return WindowsDiskCleanupResult.Cleaned;
             }
             catch (Exception ex)
             {
-                return TryOpenManualDiskCleanup(driveLetter, "自动请求 Windows 磁盘清理失败：" + ex.Message, out message);
-            }
-        }
-
-        private static void ConfigureDirectXShaderCacheCleanup()
-        {
-            using (var key = Registry.LocalMachine.OpenSubKey(VolumeCachesRegistryPath, true))
-            {
-                if (key == null)
-                {
-                    throw new InvalidOperationException("系统未找到 VolumeCaches 磁盘清理配置。");
-                }
-
-                foreach (var registryName in ShaderCacheRegistryNames)
-                {
-                    using (var shaderCacheKey = key.OpenSubKey(registryName, true))
-                    {
-                        if (shaderCacheKey == null)
-                        {
-                            continue;
-                        }
-
-                        shaderCacheKey.SetValue(StateFlagName, 2, RegistryValueKind.DWord);
-                        return;
-                    }
-                }
-
-                throw new InvalidOperationException("系统未找到 D3D/DirectX Shader Cache 磁盘清理项。");
-            }
-        }
-
-        private static WindowsDiskCleanupResult TryOpenManualDiskCleanup(string driveLetter, string reason, out string message)
-        {
-            try
-            {
-                StartCleanManager("/d " + driveLetter + ":");
-                message = reason + "，已打开 " + driveLetter + ": 盘的磁盘清理，请手动勾选“DirectX 着色器缓存”。";
-                return WindowsDiskCleanupResult.ManualStarted;
-            }
-            catch (Exception ex)
-            {
-                message = reason + "，且无法打开磁盘清理：" + ex.Message;
+                message = "清理 Windows DirectX/D3D 着色器缓存失败：" + ex.Message;
                 return WindowsDiskCleanupResult.Failed;
             }
         }
 
-        private static void StartCleanManager(string arguments)
+        private static IEnumerable<string> GetDirectXShaderCacheDirectories(string driveLetter)
         {
-            Process.Start(new ProcessStartInfo
+            var localAppData = GetDirectXShaderCacheRootPath();
+            if (string.IsNullOrWhiteSpace(localAppData) || !IsOnDrive(localAppData, driveLetter))
             {
-                FileName = "cleanmgr.exe",
-                Arguments = arguments,
-                UseShellExecute = true
-            });
+                yield break;
+            }
+
+            foreach (var candidate in GetExistingDirectXShaderCachePaths())
+            {
+                yield return candidate;
+            }
+        }
+
+        private static bool IsOnDrive(string path, string driveLetter)
+        {
+            return string.Equals(GetDriveLetter(path), driveLetter, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void CleanDirectoryContents(string path, ref int deleted, ref int failed, ICollection<string> failureMessages)
+        {
+            foreach (var file in Directory.EnumerateFiles(path))
+            {
+                try
+                {
+                    DeleteFile(file);
+                    deleted++;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    AddFailureMessage(failureMessages, file, ex);
+                }
+            }
+
+            foreach (var directory in Directory.EnumerateDirectories(path))
+            {
+                try
+                {
+                    DeleteDirectory(directory);
+                    deleted++;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    AddFailureMessage(failureMessages, directory, ex);
+                }
+            }
+        }
+
+        private static void DeleteDirectory(string path)
+        {
+            foreach (var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+            {
+                DeleteFile(file);
+            }
+
+            foreach (var directory in Directory.EnumerateDirectories(path, "*", SearchOption.AllDirectories)
+                .OrderByDescending(directory => directory.Length))
+            {
+                File.SetAttributes(directory, FileAttributes.Normal);
+            }
+
+            File.SetAttributes(path, FileAttributes.Normal);
+            Directory.Delete(path, true);
+        }
+
+        private static void DeleteFile(string path)
+        {
+            File.SetAttributes(path, FileAttributes.Normal);
+            File.Delete(path);
+        }
+
+        private static void AddFailureMessage(ICollection<string> failureMessages, string path, Exception ex)
+        {
+            if (failureMessages.Count >= 3)
+            {
+                return;
+            }
+
+            failureMessages.Add(Path.GetFileName(path) + "：" + ex.Message);
+        }
+
+        private static string BuildCleanMessage(
+            string driveLetter,
+            int directoryCount,
+            int deleted,
+            int failed,
+            IEnumerable<string> failureMessages)
+        {
+            var message = "已直接清理 " + driveLetter + ": 盘用户级 Windows DirectX/D3D 着色器缓存目录 " + directoryCount
+                          + " 个，删除 " + deleted + " 项。";
+
+            if (failed == 0)
+            {
+                return message;
+            }
+
+            message += " 跳过 " + failed + " 项被占用或无法访问的项目。";
+            var details = failureMessages.ToList();
+            if (details.Count > 0)
+            {
+                message += " 示例：" + string.Join("；", details);
+            }
+
+            return message;
         }
 
         public static string GetDriveLetter(string path)
@@ -130,9 +212,5 @@ namespace Cs2ShaderCacheCleaner
             return root.Substring(0, 1).ToUpperInvariant();
         }
 
-        private static bool IsRegistryPermissionException(Exception ex)
-        {
-            return ex is UnauthorizedAccessException || ex is SecurityException;
-        }
     }
 }
