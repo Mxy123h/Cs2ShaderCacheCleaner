@@ -1,0 +1,3 @@
+%USERPROFILE%\AppData\Local\NVIDIA\DXCache
+steamapps\shadercache\730
+Counter-Strike Global Offensive\game\core\shaders_***_***.vpk

@@ -1,0 +1,16 @@
+C:\Users\mxy\Desktop\DXCache\src\Cs2ShaderCacheCleaner\bin\Release\Cs2ShaderCacheCleaner.exe.config
+C:\Users\mxy\Desktop\DXCache\src\Cs2ShaderCacheCleaner\bin\Release\Cs2ShaderCacheCleaner.exe
+C:\Users\mxy\Desktop\DXCache\src\Cs2ShaderCacheCleaner\bin\Release\Cs2ShaderCacheCleaner.pdb
+C:\Users\mxy\Desktop\DXCache\src\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.csproj.AssemblyReference.cache
+C:\Users\mxy\Desktop\DXCache\src\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.csproj.CoreCompileInputs.cache
+C:\Users\mxy\Desktop\DXCache\src\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.exe
+C:\Users\mxy\Desktop\DXCache\src\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.pdb
+C:\Users\mxy\Desktop\DXCache\src\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.exe.config
+C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\bin\Release\Cs2ShaderCacheCleaner.exe.config
+C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\bin\Release\Cs2ShaderCacheCleaner.exe
+C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\bin\Release\Cs2ShaderCacheCleaner.pdb
+C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.csproj.AssemblyReference.cache
+C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.exe.config
+C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.csproj.CoreCompileInputs.cache
+C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.exe
+C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.pdb
