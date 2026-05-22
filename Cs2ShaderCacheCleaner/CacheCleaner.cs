@@ -20,6 +20,7 @@ namespace Cs2ShaderCacheCleaner
         public string Pattern { get; set; }
         public CacheTargetKind Kind { get; set; }
         public bool RequiresSteamValidation { get; set; }
+        public bool IsSelected { get; set; }
         public bool Exists { get; set; }
         public int ItemCount { get; set; }
         public long SizeBytes { get; set; }

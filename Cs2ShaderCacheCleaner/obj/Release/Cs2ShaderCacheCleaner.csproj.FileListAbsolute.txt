@@ -14,3 +14,10 @@ C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCle
 C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.csproj.CoreCompileInputs.cache
 C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.exe
 C:\Users\mxy\Desktop\DXCache\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.pdb
+D:\project\Cs2ShaderCacheCleaner\Cs2ShaderCacheCleaner\bin\Release\Cs2ShaderCacheCleaner.exe.config
+D:\project\Cs2ShaderCacheCleaner\Cs2ShaderCacheCleaner\bin\Release\Cs2ShaderCacheCleaner.exe
+D:\project\Cs2ShaderCacheCleaner\Cs2ShaderCacheCleaner\bin\Release\Cs2ShaderCacheCleaner.pdb
+D:\project\Cs2ShaderCacheCleaner\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.csproj.AssemblyReference.cache
+D:\project\Cs2ShaderCacheCleaner\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.csproj.CoreCompileInputs.cache
+D:\project\Cs2ShaderCacheCleaner\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.exe
+D:\project\Cs2ShaderCacheCleaner\Cs2ShaderCacheCleaner\obj\Release\Cs2ShaderCacheCleaner.pdb

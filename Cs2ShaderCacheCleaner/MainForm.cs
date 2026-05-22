@@ -15,6 +15,7 @@ namespace Cs2ShaderCacheCleaner
         private readonly TextBox logTextBox;
         private readonly Button scanButton;
         private readonly Button cleanButton;
+        private readonly Button validateButton;
         private List<CacheTarget> currentTargets = new List<CacheTarget>();
 
         public MainForm()
@@ -73,6 +74,16 @@ namespace Cs2ShaderCacheCleaner
             targetListView.Columns.Add("数量", 80);
             targetListView.Columns.Add("大小", 100);
             targetListView.Columns.Add("路径/匹配规则", 410);
+            targetListView.ItemChecked += TargetListView_ItemChecked;
+
+            validateButton = new Button
+            {
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                Location = new Point(592, 446),
+                Size = new Size(116, 34),
+                Text = "验证完整性"
+            };
+            validateButton.Click += (sender, args) => RequestCs2Validation();
 
             scanButton = new Button
             {
@@ -105,6 +116,7 @@ namespace Cs2ShaderCacheCleaner
             Controls.Add(headerLabel);
             Controls.Add(pathPanel);
             Controls.Add(targetListView);
+            Controls.Add(validateButton);
             Controls.Add(scanButton);
             Controls.Add(cleanButton);
             Controls.Add(logTextBox);
@@ -148,15 +160,18 @@ namespace Cs2ShaderCacheCleaner
 
         private async Task CleanSelectedAsync()
         {
-            var selectedTargets = targetListView.CheckedItems
+            SyncTargetSelectionFromListView();
+
+            var selectedTargets = targetListView.Items
                 .Cast<ListViewItem>()
+                .Where(item => item.Checked)
                 .Select(item => item.Tag as CacheTarget)
-                .Where(target => target != null && target.ItemCount > 0)
+                .Where(target => target != null && !string.IsNullOrWhiteSpace(target.Path))
                 .ToList();
 
             if (selectedTargets.Count == 0)
             {
-                MessageBox.Show(this, "请先勾选至少一个有内容的清理项。", "没有可清理项目", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "请先勾选至少一个可执行的清理项。", "没有可清理项目", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -186,9 +201,7 @@ namespace Cs2ShaderCacheCleaner
 
                 if (results.Any(result => result.Success && result.RequiresSteamValidation))
                 {
-                    string validationMessage;
-                    SteamGameVerifier.TryRequestCs2Validation(out validationMessage);
-                    AppendLog(validationMessage);
+                    RequestCs2Validation();
                 }
 
                 await ScanAsync();
@@ -206,9 +219,10 @@ namespace Cs2ShaderCacheCleaner
 
             foreach (var target in currentTargets)
             {
+                target.IsSelected = target.ItemCount > 0;
                 var item = new ListViewItem(target.Name)
                 {
-                    Checked = target.ItemCount > 0,
+                    Checked = target.IsSelected,
                     Tag = target
                 };
                 item.SubItems.Add(target.Status ?? "");
@@ -219,6 +233,34 @@ namespace Cs2ShaderCacheCleaner
             }
 
             targetListView.EndUpdate();
+        }
+
+        private void TargetListView_ItemChecked(object sender, ItemCheckedEventArgs e)
+        {
+            var target = e.Item.Tag as CacheTarget;
+            if (target != null)
+            {
+                target.IsSelected = e.Item.Checked;
+            }
+        }
+
+        private void SyncTargetSelectionFromListView()
+        {
+            foreach (ListViewItem item in targetListView.Items)
+            {
+                var target = item.Tag as CacheTarget;
+                if (target != null)
+                {
+                    target.IsSelected = item.Checked;
+                }
+            }
+        }
+
+        private void RequestCs2Validation()
+        {
+            string validationMessage;
+            SteamGameVerifier.TryRequestCs2Validation(out validationMessage);
+            AppendLog(validationMessage);
         }
 
         private static string FormatTargetPath(CacheTarget target)
@@ -298,6 +340,7 @@ namespace Cs2ShaderCacheCleaner
 
         private void SetBusy(bool busy)
         {
+            validateButton.Enabled = !busy;
             scanButton.Enabled = !busy;
             cleanButton.Enabled = !busy;
             Cursor = busy ? Cursors.WaitCursor : Cursors.Default;

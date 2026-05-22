@@ -17,7 +17,7 @@ namespace Cs2ShaderCacheCleaner
                     UseShellExecute = true
                 });
 
-                message = "已请求 Steam 验证 CS2 游戏文件完整性，请在 Steam 中等待验证完成后再启动游戏。";
+                message = "已尝试请求 Steam 验证 CS2 游戏文件完整性。请确认 Steam 已登录并开始验证；如果 Steam 未登录或没有开始验证，则本次未能执行验证游戏完整性，请登录 Steam 后手动执行。";
                 return true;
             }
             catch (Exception ex)
